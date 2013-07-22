@@ -47,54 +47,54 @@ var loadChecks = function(checksfile) {
 
 var checkHtmlFile = function(htmlfile, checksfile) {
     $ = cheerioHtmlFile(htmlfile);
-    var checks = loadChecks(checksfile).sort();
-    var out = {};
-    for(var ii in checks) {
-        var present = $(checks[ii]).length > 0;
-        out[checks[ii]] = present;
-    }
+    var out = checkFile($, checksfile);
+
     return out;
 };
 
-var checkURL = function(url, checksfile) {
-
+var checkFile = function(buffer, checksfile) {
     var checks = loadChecks(checksfile).sort();
     var out = {};
-    
-    $(rest.get(url))
-
     for(var ii in checks) {
-        var present = $(checks[ii]).length > 0;
+        var present = buffer(checks[ii]).length > 0;
         out[checks[ii]] = present;
     }
+
     return out;
-    
+
 }
- 
+
 var clone = function(fn) {
     // Workaround for commander.js issue.
     // http://stackoverflow.com/a/6772648
     return fn.bind({});
 };
 
-if(require.main == module) {
+if(require.main === module) {
     program
         .option('-c, --checks <check_file>', 'Path to checks.json', clone(assertFileExists), CHECKSFILE_DEFAULT)
         .option('-f, --file <html_file>', 'Path to index.html', clone(assertFileExists), HTMLFILE_DEFAULT)
         .option('-u, --url <url_file>', 'Url to file')
         .parse(process.argv);
 
-    if (program.file) { 
+    if (program.url) {
+       rest.get(program.url).on('complete', function(response) {
+       var checkJson = checkFile(cheerio.load(response.toString()), program.checks); 
+       var outJson = JSON.stringify(checkJson, null, 4);
+       console.log(outJson);
+
+       });
+
+    } else if (program.file) { 
        var checkJson = checkHtmlFile(program.file, program.checks);
        var outJson = JSON.stringify(checkJson, null, 4);
-    }
-    else {
-       var checkJson = checkURL(program.url, program.checks);
-       var outJson = JSON.stringify(checkJson, null, 4);
+       console.log(outJson);
 
+    } else {
+       console.log("Please provide a file or URL to check");
     }
 
-    console.log(outJson);
+
 } else {
     exports.checkHtmlFile = checkHtmlFile;
 }
